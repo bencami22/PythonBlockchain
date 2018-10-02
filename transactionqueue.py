@@ -1,6 +1,6 @@
-from flask import Flask, request
-from flask import render_template
-
+from blockchain import Block, Transaction, proof_of_work
+from flask import Flask, request, render_template
+import json
 app = Flask(__name__)
 
 @app.route('/')
@@ -11,12 +11,11 @@ def index():
 def transaction():
   if request.method == 'POST':
     new_tx = request.get_json()
-    print(f"""New transaction
-            FROM: {new_tx['from']}
-            TO: {new_tx['to']}
-            AMOUNT: {new_tx['amount']}\n
-            """)
-
+    print(f"New transaction FROM: {new_tx['from']} TO: {new_tx['to']} AMOUNT: {new_tx['amount']}\n")
+    #TODO:VALIDATION HERE
+    transaction = Transaction(str(new_tx['from']), str(new_tx['to']), str(new_tx['amount']))
+    tets= proof_of_work(Block(json.dumps(transaction.__dict__), None), 1)
+    print(tets)
     return "OK"
 
 if __name__ == "__main__":

@@ -54,7 +54,7 @@ async def connect_socket(server_domain, node):
 async def socket_handler_queue(websocket, path, queue):
     consumer_task = asyncio.ensure_future(consumer_handler(websocket, path, queue))
     producer_task = asyncio.ensure_future(producer_handler(websocket, path, queue))
-    done, pending = await asyncio.wait([consumer_task, producer_task],
+    pending = await asyncio.wait([consumer_task, producer_task],
         return_when=asyncio.FIRST_COMPLETED,)
     for task in pending:
         print("cancelling")
@@ -125,8 +125,7 @@ asyncio.get_event_loop().run_until_complete(alert_all_nodes("new_node", this_nod
 print(f"Serving on port {this_node_port}")
 start_server = websockets.serve(socket_handler, serverDomain, this_node_port)
 asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
-
+#asyncio.get_event_loop().run_forever()
 
   
      

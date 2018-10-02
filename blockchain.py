@@ -1,26 +1,29 @@
+import node
 import sys
 import hashlib
-import node
 import datetime
+import json
 
 class Block(object):
-    def __init__(self, index, timestamp, data, previous_hash):
-        self.index = index
-        self.timestamp = datetime.datetime.now()
+    def __init__(self, data, previous_hash):    
+        self.index = None    
         self.data = data
         self.previous_hash = previous_hash
-        self.hash = self.hash_block()
+        self.timestamp = None
   
-    def hash_block(self):
-        sha = hashlib.sha256()
-        sha.update(str(self.index) + 
-            str(self.timestamp) + 
-            str(self.data) + 
-            str(self.previous_hash))
-        return sha.hexdigest()
-
 class Transaction(object):
     def __init__(self, from_acc, to_acc, amount):
         self.from_acc = from_acc
         self.to_acc = to_acc
         self.amount = amount
+
+def proof_of_work(block, nonce):
+    hash_digest = hashlib.sha256(json.dumps(block.__dict__).encode('utf-8')).hexdigest()
+    print(f"hash_digest:{str(hash_digest)}")
+    hash_int_format = ''
+    for char in hash_digest:
+        hash_int_format += str(ord(str(char)))
+    hash_int = int(hash_int_format)
+    if hash_int % 2 == 0:
+        return hash_digest
+    return proof_of_work(block, nonce + 1)
