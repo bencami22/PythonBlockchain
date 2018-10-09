@@ -23,7 +23,7 @@ def proof_of_work(block, nonce):
     hash_int_format = ''
     for char in hash_digest:
         hash_int_format += str(ord(str(char)))
-    hash_int = int(hash_int_format)
+    hash_int = int(hash_int_format) + nonce
     if hash_int % 2 == 0:
-        return hash_digest
+        return (hash_digest, nonce)
     return proof_of_work(block, nonce + 1)
