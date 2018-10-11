@@ -2,6 +2,7 @@ import sys
 import asyncio
 import websockets
 import json
+import blockchain
 
 #https://websockets.readthedocs.io/en/stable/intro.html
 
@@ -81,6 +82,8 @@ async def producer_handler(websocket, path, queue):
         except:
             print("Unexpected error:", sys.exc_info()[0])
 
+transactionsQueue=[]
+
 async def consumer(message, websocket, queue):
     print("consumer message:", message)
     global nodes
@@ -92,6 +95,18 @@ async def consumer(message, websocket, queue):
         await queue.put(return_data)
     elif data["msgtype"] == "new_node":
         nodes[data["msgpayload"]] = None #reserve
+    elif data["msgtype"] == "new_transaction":
+        transactionsQueue.append(data["msgpayload"])
+        print("transactions len:"+len(transactionsQueue))
+        if len(transactionsQueue) >=5:
+            previous_hash = None
+            if len(blockchain.blockchain) > 0:
+                previous_hash = blockchain.blockchain[len(blockchain.blockchain)].hash
+            block = blockchain.Block(transactionsQueue.__dict__, previous_hash)
+            hash, nonce= blockchain.proof_of_work(block, 1)
+            print(f"proof of work completed. Hash: {hash} Nonce:{nonce}")
+            block.hash = hash
+            block.nonce = nonce
 
 async def broadcaster_handler():
     while True:
@@ -120,12 +135,9 @@ async def alert_all_nodes(type, data):
     await broadcast_outbox.put(json_data)
 
 nodes[this_node_port] = None
-asyncio.get_event_loop().run_until_complete(alert_all_nodes("new_node", this_node_port))
+loop.run_until_complete(alert_all_nodes("new_node", this_node_port))
 
 print(f"Serving on port {this_node_port}")
 start_server = websockets.serve(socket_handler, serverDomain, this_node_port)
-asyncio.get_event_loop().run_until_complete(start_server)
-#asyncio.get_event_loop().run_forever()
-
-  
-     
+loop.run_until_complete(start_server)
+#loop.run_forever()

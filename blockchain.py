@@ -1,8 +1,9 @@
-import node
 import sys
 import hashlib
 import datetime
 import json
+
+blockchain = []
 
 class Block(object):
     def __init__(self, data, previous_hash):    
@@ -10,6 +11,7 @@ class Block(object):
         self.data = data
         self.previous_hash = previous_hash
         self.timestamp = None
+        self.hash = None
   
 class Transaction(object):
     def __init__(self, from_acc, to_acc, amount):
