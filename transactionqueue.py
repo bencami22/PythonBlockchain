@@ -1,7 +1,7 @@
 from blockchain import Transaction
 from flask import Flask, request, render_template
 import json
-from node import loop, broadcast_outbox
+import node 
 import asyncio
 
 app = Flask(__name__)
@@ -18,8 +18,9 @@ def transaction():
     #TODO:VALIDATION HERE
     transaction = Transaction(str(new_tx['from']), str(new_tx['to']), str(new_tx['amount']))
     transaction_json = json.dumps(transaction.__dict__)
-    task = loop.create_task(broadcast_outbox.put('{"msgtype":"new_transaction", "msgpayload":"'+transaction_json+'}"}'))
-    loop.run_until_complete(task)
+    chec =node.broadcast_outbox
+    asyncio.run(node.broadcast_outbox.put('{"msgtype":"new_transaction", "msgpayload":"'+transaction_json+'}"}'))
+    chec =node.broadcast_outbox
     return "OK"
 
 if __name__ == "__main__":

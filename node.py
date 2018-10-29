@@ -3,6 +3,7 @@ import asyncio
 import websockets
 import json
 import blockchain
+from threading import Thread
 
 #https://websockets.readthedocs.io/en/stable/intro.html
 
@@ -40,21 +41,16 @@ async def get_all_nodes():
     finally:
         print("Continueing to host socket")
     
-asyncio.run(get_all_nodes())
+
 
 #-------------------------------------------------------------------------
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
-
-broadcast_outbox = asyncio.Queue()
-
 async def connect_socket(server_domain, node):
     async with websockets.connect(f"ws://{serverDomain}:{node}") as websocket:
         await socket_handler_queue(websocket, f"ws://{serverDomain}:{node}", nodes[node])
 
 async def socket_handler_queue(websocket, path, queue):
-    consumer_task = asyncio.ensure_future(consumer_handler(websocket, path, queue))
-    producer_task = asyncio.ensure_future(producer_handler(websocket, path, queue))
+    consumer_task = asyncio.create_task(consumer_handler(websocket, path, queue))
+    producer_task = asyncio.create_task(producer_handler(websocket, path, queue))
     pending = await asyncio.wait([consumer_task, producer_task],
         return_when=asyncio.FIRST_COMPLETED,)
     for task in pending:
@@ -108,25 +104,26 @@ async def consumer(message, websocket, queue):
             block.hash = hash
             block.nonce = nonce
 
-async def broadcaster_handler():
+async def broadcaster_handler(broadcast_outbox, event_loop):
     while True:
-        message = await broadcast_outbox.get()
-        for node in nodes:
-            try:
-                if node != this_node_port:
-                    if nodes[node] == None:
-                        nodes[node] = asyncio.Queue()
-                        await nodes[node].put(message)
-                        asyncio.ensure_future(connect_socket(serverDomain, node))
-                    else:
-                        await nodes[node].put(message)
-            except:
-                print(f"Failed to alert node: {node} message:{message}")
-                print("Unexpected error:", sys.exc_info()[0])
+        try:
+            message = await broadcast_outbox.get()
+            for node in nodes:
+                try:
+                    if node != this_node_port:
+                        if nodes[node] == None:
+                            nodes[node] = asyncio.Queue()
+                            await nodes[node].put(message)
+                            event_loop.create_task(connect_socket(serverDomain, node))
+                        else:
+                            await nodes[node].put(message)
+                except:
+                    print(f"Failed to alert node: {node} message:{message}")
+                    print("Unexpected error:", sys.exc_info()[0])
+        except:
+            print("broadcast_outbox.get() - Unexpected error:", sys.exc_info()[0])
 
-asyncio.ensure_future(broadcaster_handler())
-
-async def alert_all_nodes(type, data):
+async def alert_all_nodes(broadcast_outbox, type, data):
     print(f"alerting all nodes")
     json_obj = {}
     json_obj['msgtype'] = type
@@ -135,9 +132,25 @@ async def alert_all_nodes(type, data):
     await broadcast_outbox.put(json_data)
 
 nodes[this_node_port] = None
-loop.run_until_complete(alert_all_nodes("new_node", this_node_port))
 
-print(f"Serving on port {this_node_port}")
-start_server = websockets.serve(socket_handler, serverDomain, this_node_port)
-loop.run_until_complete(start_server)
-#loop.run_forever()
+def start_server():
+    event_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(event_loop)
+
+
+    event_loop.run_until_complete(get_all_nodes())
+
+    global broadcast_outbox 
+    broadcast_outbox= asyncio.Queue()
+    event_loop.create_task(broadcaster_handler(broadcast_outbox, event_loop))
+    
+    event_loop.run_until_complete(alert_all_nodes(broadcast_outbox, "new_node", this_node_port))
+
+
+    print(f"Serving on port {this_node_port}")
+
+    event_loop.run_until_complete(websockets.serve(socket_handler, serverDomain, this_node_port))
+    event_loop.run_forever()
+
+t = Thread(target = start_server)
+t.start()
