@@ -18,9 +18,9 @@ def transaction():
     #TODO:VALIDATION HERE
     transaction = Transaction(str(new_tx['from']), str(new_tx['to']), str(new_tx['amount']))
     transaction_json = json.dumps(transaction.__dict__)
-    chec =node.broadcast_outbox
-    asyncio.run(node.broadcast_outbox.put('{"msgtype":"new_transaction", "msgpayload":"'+transaction_json+'}"}'))
-    chec =node.broadcast_outbox
+    json_data= str('{"msgtype":"new_transaction", "msgpayload":'+transaction_json+'}')
+    asyncio.run(node.broadcast_outbox.put(json_data))
+
     return "OK"
 
 if __name__ == "__main__":
