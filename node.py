@@ -34,7 +34,7 @@ async def get_all_nodes():
             nodes_rec = json.loads(data_received)
             for node in nodes_rec:
                 nodes[node] = None
-            #global __this_node_port
+            global __this_node_port
             __this_node_port = len(nodes_rec) + 1
     except:        
         print(f"Failed to connect to ws://{serverDomain}:1...")
@@ -94,7 +94,7 @@ async def consumer(message, websocket, queue):
         nodes[data["msgpayload"]] = None #reserve
     elif data["msgtype"] == "new_transaction":
         transactionsQueue.append(data["msgpayload"])
-        print("transactions len:"+len(transactionsQueue))
+        print("transactions len:",len(transactionsQueue))
         if len(transactionsQueue) >=5:
             previous_hash = None
             if len(blockchain.blockchain) > 0:
@@ -108,10 +108,7 @@ async def consumer(message, websocket, queue):
 async def broadcaster_handler(broadcast_outbox, event_loop):
     while True:
         try:
-            #print(broadcast_outbox.qsize())
-            #if int(broadcast_outbox.qsize())>0:
-                #print("!!!!!!!!!!!!!!!!!!")
-            message = broadcast_outbox.get_nowait()
+            message = await broadcast_outbox.get()
             for node in nodes:
                 try:
                     if node != __this_node_port:
@@ -124,8 +121,12 @@ async def broadcaster_handler(broadcast_outbox, event_loop):
                 except:
                     print(f"Failed to alert node: {node} message:{message}")
                     print("Unexpected error:", sys.exc_info()[0])
+            print('broadcasted: ', message)
         except:
-            #print("broadcast_outbox.get() - Unexpected error:", sys.exc_info()[0], sys.exc_info()[1])
+            temp = str(sys.exc_info()[0])
+            #print(temp)
+            if str(sys.exc_info()[0])!="<class 'asyncio.queues.QueueEmpty'>":
+                print("broadcast_outbox.get() - Unexpected error:", sys.exc_info()[0], sys.exc_info()[1])
             pass
             
 async def alert_all_nodes(broadcast_outbox, type, data):
@@ -139,20 +140,23 @@ async def alert_all_nodes(broadcast_outbox, type, data):
 nodes[__this_node_port] = None
 
 def start_server():
+    
     event_loop = asyncio.new_event_loop()
+
     asyncio.set_event_loop(event_loop)
+
+    global broadcast_outbox 
+    broadcast_outbox= asyncio.Queue()
 
     event_loop.run_until_complete(get_all_nodes())
     print('get_all_nodes done')
-    global broadcast_outbox 
-    broadcast_outbox= asyncio.Queue()
-    
-    event_loop.run_until_complete(alert_all_nodes(broadcast_outbox, "new_node", __this_node_port))
-   
-    print(f"Serving on port {__this_node_port}")
 
-    event_loop.run_until_complete(websockets.serve(socket_handler, serverDomain, __this_node_port))
+    event_loop.create_task(alert_all_nodes(broadcast_outbox, "new_node", __this_node_port))
     event_loop.create_task(broadcaster_handler(broadcast_outbox, event_loop))
+
+    print(f"Serving on port {__this_node_port}")
+    event_loop.run_until_complete(websockets.serve(socket_handler, serverDomain, __this_node_port))
+
     event_loop.run_forever()
 
 t = Thread(target = start_server)
