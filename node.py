@@ -77,9 +77,26 @@ async def producer_handler(websocket, path, queue):
             print("producer message:", message)
             await websocket.send(message)
         except:
-            print("Unexpected error:", sys.exc_info()[0])
+            #print("Unexpected error:", sys.exc_info()[0])
+            pass
 
 transactionsQueue=[]
+
+async def AddTransaction(broadcast_outbox, transaction):
+    transactionsQueue.append(transaction.__dict__)
+    print("transactions len:", len(transactionsQueue))
+    if len(transactionsQueue) >=5:
+        previous_hash = None
+        if len(blockchain.blockchain) > 0:
+            previous_hash = blockchain.blockchain[len(blockchain.blockchain)-1].hash
+        block = blockchain.Block(json.dumps(transactionsQueue), previous_hash)
+        hash, nonce= blockchain.proof_of_work(block, 1)
+        print(f"proof of work completed. Hash: {hash} Nonce:{nonce}")
+        block.hash = hash
+        block.nonce = nonce
+        blockchain.blockchain.append(block)
+        await alert_all_nodes(broadcast_outbox, "new_block", json.dumps(block.__dict__))
+        transactionsQueue.clear()
 
 async def consumer(message, websocket, queue):
     print("consumer message:", message)
@@ -92,23 +109,26 @@ async def consumer(message, websocket, queue):
         await queue.put(return_data)
     elif data["msgtype"] == "new_node":
         nodes[data["msgpayload"]] = None #reserve
-    elif data["msgtype"] == "new_transaction":
-        transactionsQueue.append(data["msgpayload"])
-        print("transactions len:",len(transactionsQueue))
-        if len(transactionsQueue) >=5:
-            previous_hash = None
-            if len(blockchain.blockchain) > 0:
-                previous_hash = blockchain.blockchain[len(blockchain.blockchain)].hash
-            block = blockchain.Block(transactionsQueue.__dict__, previous_hash)
-            hash, nonce= blockchain.proof_of_work(block, 1)
-            print(f"proof of work completed. Hash: {hash} Nonce:{nonce}")
-            block.hash = hash
-            block.nonce = nonce
+        blockchain_json = json.dumps(blockchain.blockchain)
+        full_message = '{"msgtype":"full_blockchain","msgpayload":"' + blockchain_json + '"}'
+        await websocket.send(full_message)
+    elif data["msgtype"] == "full_blockchain":
+        try: 
+            blockchain.blockchain = json.loads(data["msgpayload"])
+        except: 
+            blockchain.blockchain = []
+    elif data["msgtype"] == "new_block":
+        block = json.loads(data["msgpayload"])
+        blockchain.blockchain.append(block)
+    else:
+        print("Unknown msgtype received: ", data["msgtype"])
+        
 
 async def broadcaster_handler(broadcast_outbox, event_loop):
     while True:
         try:
             message = await broadcast_outbox.get()
+            print('broadcasting: ', message)
             for node in nodes:
                 try:
                     if node != __this_node_port:
@@ -118,12 +138,12 @@ async def broadcaster_handler(broadcast_outbox, event_loop):
                             event_loop.create_task(connect_socket(serverDomain, node))
                         else:
                             await nodes[node].put(message)
+                    print('broadcasted: ', message)
                 except:
-                    print(f"Failed to alert node: {node} message:{message}")
-                    print("Unexpected error:", sys.exc_info()[0])
-            print('broadcasted: ', message)
+                    print(f"Failed to broadcast to node: {node} message:{message}")
+                    #print("Unexpected error:", sys.exc_info()[0])            
         except:
-            temp = str(sys.exc_info()[0])
+            #temp = str(sys.exc_info()[0])
             #print(temp)
             if str(sys.exc_info()[0])!="<class 'asyncio.queues.QueueEmpty'>":
                 print("broadcast_outbox.get() - Unexpected error:", sys.exc_info()[0], sys.exc_info()[1])
