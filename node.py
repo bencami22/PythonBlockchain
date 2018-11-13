@@ -68,7 +68,7 @@ async def consumer_handler(websocket, path, queue):
             async for message in websocket:
                 await consumer(message, websocket, queue)
     except:
-        print("Unexpected error:", sys.exc_info()[0])
+        print("Unexpected error:", sys.exc_info()[0], sys.exc_info()[1])
 
 async def producer_handler(websocket, path, queue):
     while True:
@@ -109,7 +109,7 @@ async def consumer(message, websocket, queue):
         await queue.put(return_data)
     elif data["msgtype"] == "new_node":
         nodes[data["msgpayload"]] = None #reserve
-        blockchain_json = json.dumps(blockchain.blockchain)
+        blockchain_json = json.dumps([b.__dict__ for b in blockchain.blockchain])
         full_message = '{"msgtype":"full_blockchain","msgpayload":"' + blockchain_json + '"}'
         await websocket.send(full_message)
     elif data["msgtype"] == "full_blockchain":
