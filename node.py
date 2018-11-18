@@ -19,6 +19,18 @@ if serverDomain == None:
 
 __this_node_port = 1
 
+class Payload(object):
+    def __init__(self, jsonString = None, **kwargs):
+        if jsonString != None:
+            self.__dict__ = json.loads(jsonString)
+        elif 'msgtype' not in kwargs or 'msgpayload' not in kwargs:
+            raise ValueError('msgtype and msgpayload must be populated.')
+        else:
+            self.msgtype=kwargs['msgtype']
+            self.msgpayload=kwargs['msgpayload']
+    def toJson(self):
+        return json.dumps(self.__dict__)
+
 print("Starting....")
 
 print(f"First trying to connect to ws host {serverDomain} on port 1 to get all nodes")
@@ -27,7 +39,7 @@ async def get_all_nodes():
     print(f"Connecting to ws://{serverDomain}:1...")
     try:
         async with websockets.connect(f"ws://{serverDomain}:1") as websocket:
-            await websocket.send('{"msgtype":"all_nodes","msgpayload":""}')
+            await websocket.send(Payload(msgtype="all_nodes", msgpayload="").toJson())
             data_received = await websocket.recv()
             print(f"data_received={data_received}")
             #global nodes
@@ -38,7 +50,7 @@ async def get_all_nodes():
             __this_node_port = len(nodes_rec) + 1
     except:        
         print(f"Failed to connect to ws://{serverDomain}:1...")
-        print("Unexpected error:", sys.exc_info()[0])
+        print("Unexpected error:", sys.exc_info()[0], sys.exc_info()[1])
     finally:
         print("Continueing to host socket")
     
@@ -101,27 +113,26 @@ async def AddTransaction(broadcast_outbox, transaction):
 async def consumer(message, websocket, queue):
     print("consumer message:", message)
     global nodes
-    data = json.loads(message)
-    print(f'data[msgtype]={data["msgtype"]}   data[msgpayload]={data["msgpayload"]}')
-    if data["msgtype"] == "all_nodes":
+    payload = Payload(message)
+    if payload.msgtype == "all_nodes":
         return_data = json.dumps(list(nodes.keys()))
         print(return_data)
         await queue.put(return_data)
-    elif data["msgtype"] == "new_node":
-        nodes[data["msgpayload"]] = None #reserve
+    elif payload.msgtype == "new_node":
+        nodes[payload.msgpayload] = None #reserve
         blockchain_json = json.dumps([b.__dict__ for b in blockchain.blockchain])
-        full_message = '{"msgtype":"full_blockchain","msgpayload":"' + blockchain_json + '"}'
+        full_message = Payload(msgtype="full_blockchain",msgpayload=blockchain_json).toJson()
         await websocket.send(full_message)
-    elif data["msgtype"] == "full_blockchain":
+    elif payload.msgtype == "full_blockchain":
         try: 
-            blockchain.blockchain = json.loads(data["msgpayload"])
+            blockchain.blockchain = json.loads(payload.msgpayload)
         except: 
             blockchain.blockchain = []
-    elif data["msgtype"] == "new_block":
-        block = json.loads(data["msgpayload"])
+    elif payload.msgtype == "new_block":
+        block = json.loads(payload.msgpayload)
         blockchain.blockchain.append(block)
     else:
-        print("Unknown msgtype received: ", data["msgtype"])
+        print("Unknown msgtype received: ", payload.msgtype)
         
 
 async def broadcaster_handler(broadcast_outbox, event_loop):
@@ -151,10 +162,8 @@ async def broadcaster_handler(broadcast_outbox, event_loop):
             
 async def alert_all_nodes(broadcast_outbox, type, data):
     print(f"alerting all nodes")
-    json_obj = {}
-    json_obj['msgtype'] = type
-    json_obj['msgpayload'] = data
-    json_data = json.dumps(json_obj)
+    payload = Payload(msgtype=type, msgpayload=data)
+    json_data = payload.toJson()
     await broadcast_outbox.put(json_data)
 
 nodes[__this_node_port] = None
