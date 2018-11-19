@@ -4,6 +4,8 @@ import websockets
 import json
 import blockchain
 from threading import Thread
+from collections import namedtuple
+from datetime import datetime
 
 #https://websockets.readthedocs.io/en/stable/intro.html
 
@@ -22,7 +24,9 @@ __this_node_port = 1
 class Payload(object):
     def __init__(self, jsonString = None, **kwargs):
         if jsonString != None:
-            self.__dict__ = json.loads(jsonString)
+            jsonObj = json.loads(jsonString)
+            self.msgtype = jsonObj['msgtype']
+            self.msgpayload = jsonObj['msgpayload']
         elif 'msgtype' not in kwargs or 'msgpayload' not in kwargs:
             raise ValueError('msgtype and msgpayload must be populated.')
         else:
@@ -54,8 +58,6 @@ async def get_all_nodes():
     finally:
         print("Continueing to host socket")
     
-
-
 #-------------------------------------------------------------------------
 async def connect_socket(server_domain, node):
     async with websockets.connect(f"ws://{serverDomain}:{node}") as websocket:
@@ -106,6 +108,7 @@ async def AddTransaction(broadcast_outbox, transaction):
         print(f"proof of work completed. Hash: {hash} Nonce:{nonce}")
         block.hash = hash
         block.nonce = nonce
+        block.timestamp=datetime.utcnow().strftime("%y/%m/%d %H:%M")
         blockchain.blockchain.append(block)
         await alert_all_nodes(broadcast_outbox, "new_block", json.dumps(block.__dict__))
         transactionsQueue.clear()
@@ -125,11 +128,19 @@ async def consumer(message, websocket, queue):
         await websocket.send(full_message)
     elif payload.msgtype == "full_blockchain":
         try: 
-            blockchain.blockchain = json.loads(payload.msgpayload)
+            jsonObj=json.loads(payload.msgpayload)
+
+            for b in jsonObj:
+                block = blockchain.Block(b['data'], b['previous_hash'], b['index'], b['timestamp'], b['hash'], b['nonce'])
+                blockchain.blockchain.append(block)
         except: 
             blockchain.blockchain = []
+            print("Unexpected error:", sys.exc_info()[0], sys.exc_info()[1])
+        
+        print('received full blockchain')
     elif payload.msgtype == "new_block":
-        block = json.loads(payload.msgpayload)
+        jsonObj = json.loads(payload.msgpayload)
+        block = blockchain.Block(jsonObj['data'], jsonObj['previous_hash'], jsonObj['index'], jsonObj['timestamp'], jsonObj['hash'], jsonObj['nonce'])
         blockchain.blockchain.append(block)
     else:
         print("Unknown msgtype received: ", payload.msgtype)

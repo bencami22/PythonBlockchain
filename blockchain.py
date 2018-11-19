@@ -6,12 +6,13 @@ import json
 blockchain = []
 
 class Block(object):
-    def __init__(self, data, previous_hash):    
-        self.index = None    
+    def __init__(self, data, previous_hash, index = None, timestamp=None, hash=None, nonce= None):    
+        self.index = index   
         self.data = data
         self.previous_hash = previous_hash
-        self.timestamp = None
-        self.hash = None
+        self.timestamp = timestamp
+        self.hash = hash
+        self.nonce= nonce
   
 class Transaction(object):
     def __init__(self, from_acc, to_acc, amount):
