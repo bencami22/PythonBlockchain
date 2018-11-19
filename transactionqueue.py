@@ -3,6 +3,7 @@ from flask import Flask, request, render_template
 import json
 import node 
 import asyncio
+import random
 
 app = Flask(__name__)
 
@@ -21,4 +22,4 @@ def transaction():
     return "OK"
 
 if __name__ == "__main__":
-    app.run()
+    app.run(port=random.randint(5000,6000))
