@@ -110,7 +110,7 @@ async def AddTransaction(broadcast_outbox, transaction):
         block.nonce = nonce
         block.timestamp=datetime.utcnow().strftime("%y/%m/%d %H:%M")
         blockchain.blockchain.append(block)
-        await alert_all_nodes(broadcast_outbox, "new_block", json.dumps(block.__dict__))
+        await alert_all_nodes(broadcast_outbox, "new_block", block.__dict__)
         transactionsQueue.clear()
 
 async def consumer(message, websocket, queue):
@@ -139,7 +139,7 @@ async def consumer(message, websocket, queue):
         
         print('received full blockchain')
     elif payload.msgtype == "new_block":
-        jsonObj = json.loads(payload.msgpayload)
+        jsonObj = payload.msgpayload
         block = blockchain.Block(jsonObj['data'], jsonObj['previous_hash'], jsonObj['index'], jsonObj['timestamp'], jsonObj['hash'], jsonObj['nonce'])
         blockchain.blockchain.append(block)
     else:
@@ -180,6 +180,8 @@ async def alert_all_nodes(broadcast_outbox, type, data):
 nodes[__this_node_port] = None
 
 def start_server():
+    
+    global event_loop
     
     event_loop = asyncio.new_event_loop()
 
