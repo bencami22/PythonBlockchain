@@ -96,15 +96,15 @@ async def producer_handler(websocket, path, queue):
 
 transactionsQueue=[]
 
-async def AddTransaction(broadcast_outbox, transaction):
+async def AddTransaction(broadcast_outbox : Queue, transaction : Transaction):
     transactionsQueue.append(transaction.__dict__)
     print("transactions len:", len(transactionsQueue))
-    if len(transactionsQueue) >=5:
-        previous_hash = None
+    if len(transactionsQueue) >= 5:
+        previous_hash : str = None
         if len(blockchain.blockchain) > 0:
             previous_hash = blockchain.blockchain[len(blockchain.blockchain)-1].hash
         block = blockchain.Block(json.dumps(transactionsQueue), previous_hash)
-        hash, nonce= blockchain.proof_of_work(block, 1)
+        hash, nonce = blockchain.proof_of_work(block, 1)
         print(f"proof of work completed. Hash: {hash} Nonce:{nonce}")
         block.hash = hash
         block.nonce = nonce
