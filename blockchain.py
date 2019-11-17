@@ -4,8 +4,6 @@ import hashlib
 import json
 from typing import List, Tuple
 
-BLOCKCHAIN: List[Block] = []
-
 class Block:
     """Data structure for a block."""
     def __init__(self, data: str, previous_hash: str, index: int = None, timestamp: str = None,
@@ -35,3 +33,5 @@ def proof_of_work(block: Block, nonce: int) -> Tuple[str, int]:
     if hash_int % 2 == 0:
         return (hash_digest, nonce)
     return proof_of_work(block, nonce + 1)
+
+BLOCKCHAIN: List[Block] = []
