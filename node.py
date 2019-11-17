@@ -13,7 +13,7 @@ serverDomain = None
 nodes = dict()
 
 #server domain can be passed through as arg
-if len(sys.argv) > 1 :
+if len(sys.argv) > 1:
     serverDomain = sys.argv[1]
 
 if serverDomain == None:
@@ -22,7 +22,7 @@ if serverDomain == None:
 __this_node_port = 1
 
 class Payload(object):
-    def __init__(self, jsonString = None, **kwargs):
+    def __init__(self, jsonString= None, **kwargs):
         if jsonString != None:
             jsonObj = json.loads(jsonString)
             self.msgtype = jsonObj['msgtype']

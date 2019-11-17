@@ -15,12 +15,12 @@ def index():
 @APP.route('/tx', methods=['POST'])
 async def transaction():
     """HTTP POST endpoint to submit a new transaction to the blockchain."""
-    new_tx = await request.get_json()
+    new_tx: str = await request.get_json()
     print(f"New transaction FROM: {new_tx['from']} TO: {new_tx['to']} AMOUNT: {new_tx['amount']}\n")
 
     #TODO:VALIDATION HERE
 
-    tran = Transaction(str(new_tx['from']), str(new_tx['to']), str(new_tx['amount']))
+    tran: Transaction = Transaction(str(new_tx['from']), str(new_tx['to']), str(new_tx['amount']))
 
     try:
         await node.AddTransaction(node.broadcast_outbox, tran)
