@@ -4,6 +4,7 @@ import hashlib
 import json
 from typing import List, Tuple
 
+
 class Block:
     """Data structure for a block."""
     def __init__(self, data: str, previous_hash: str, index: int = None, timestamp: str = None,
@@ -15,12 +16,14 @@ class Block:
         self.hash_value = hash_value
         self.nonce = nonce
 
+
 class Transaction:
     """Data structure for a Transaction."""
     def __init__(self, from_acc: str, to_acc: str, amount: float):
         self.from_acc = from_acc
         self.to_acc = to_acc
         self.amount = amount
+
 
 def proof_of_work(block: Block, nonce: int) -> Tuple[str, int]:
     """The proof of work algorithm used to sign blocks"""
@@ -33,5 +36,6 @@ def proof_of_work(block: Block, nonce: int) -> Tuple[str, int]:
     if hash_int % 2 == 0:
         return (hash_digest, nonce)
     return proof_of_work(block, nonce + 1)
+
 
 BLOCKCHAIN: List[Block] = []
