@@ -1,29 +1,33 @@
-import sys
-from quart import Quart, request, render_template
-from blockchain import Transaction
-import json
-import node 
+"""REST API using Quart thats hosts a single endpoint POST /tx.
+This will be hosted on every single node, using a port between 5000-6000."""
 import random
-import asyncio
+from quart import Quart, request
+from blockchain import Transaction
+import node
 
-app = Quart(__name__)
+APP = Quart(__name__)
 
-@app.route('/')
+@APP.route('/')
 def index():
+    """Simple HTTP GET to return "OK" for health check."""
     return "OK"
 
-@app.route('/tx', methods=['POST'])
+@APP.route('/tx', methods=['POST'])
 async def transaction():
+    """HTTP POST endpoint to submit a new transaction to the blockchain."""
     new_tx = await request.get_json()
     print(f"New transaction FROM: {new_tx['from']} TO: {new_tx['to']} AMOUNT: {new_tx['amount']}\n")
+
     #TODO:VALIDATION HERE
-    transaction = Transaction(str(new_tx['from']), str(new_tx['to']), str(new_tx['amount']))
+
+    tran = Transaction(str(new_tx['from']), str(new_tx['to']), str(new_tx['amount']))
+
     try:
-        await node.AddTransaction(node.broadcast_outbox, transaction)
-    except:
-        print("Unexpected error:", sys.exc_info()[0], sys.exc_info()[1])
+        await node.AddTransaction(node.broadcast_outbox, tran)
+    except Exception as ex:
+        print("Error '{0}' occured. Arguments {1}.".format(ex, ex.args))
     return "OK"
 
 if __name__ == "__main__":
-    app.run(port=random.randint(5000,6000))
+    APP.run(port=random.randint(5000, 6000))
     #app.run(port=5000)
