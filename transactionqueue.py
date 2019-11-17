@@ -23,7 +23,7 @@ async def transaction():
     tran: Transaction = Transaction(str(new_tx['from']), str(new_tx['to']), str(new_tx['amount']))
 
     try:
-        await node.AddTransaction(node.broadcast_outbox, tran)
+        await node.add_transaction(node.broadcast_outbox, tran)
     except Exception as ex:
         print("Error '{0}' occured. Arguments {1}.".format(ex, ex.args))
     return "OK"
