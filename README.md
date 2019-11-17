@@ -1,4 +1,7 @@
 # PythonBlockchain
+
+[![Actions Status](https://github.com/bencami22/PythonBlockchain/workflows/Python%20application/badge.svg)](https://github.com/bencami22/PythonBlockchain/actions)
+
 Beginner in Python with a moderate understanding of Blockchain having a whip at it.
 
 Avoiding the the complexities of existent production blockchain, this implementation:
